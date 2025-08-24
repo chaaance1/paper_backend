@@ -5,6 +5,7 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,8 +28,13 @@ public class ArxivController {
     }
 
     // 논문의 메타데이터 중 pdfURL 기반 논문 자동 다운로드
-    @GetMapping("/direct-download")
-    public ResponseEntity<?> downloadFromDirectUrl(@RequestParam String url) {
+    @PostMapping("/direct-download")
+    public ResponseEntity<?> downloadFromDirectUrlPost(@RequestBody Map<String, String> request) {
+        String url = request.get("url");
+        if (url == null || url.isBlank()) {
+            return ResponseEntity.badRequest().body("Missing 'url' in request body.");
+        }
+
         try {
             String savedPath = pdfDownloadService.downloadFromArxivUrl(url);
             return ResponseEntity.ok("PDF saved at: " + savedPath);
