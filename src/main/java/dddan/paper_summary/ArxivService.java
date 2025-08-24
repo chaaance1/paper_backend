@@ -1,30 +1,22 @@
 package dddan.paper_summary;
 
-import org.w3c.dom.*;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.springframework.http.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.w3c.dom.*;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.net.URI;
-import java.net.URL;
 import java.util.List;
-
-import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 @Service
@@ -33,9 +25,6 @@ public class ArxivService {
     // 로그 생성을 위한 Logger 객체 생성
     private static final Logger log = LoggerFactory.getLogger(ArxivService.class);
 
-
-    private static final String PDF_DIR = "pdfs";
-
     // HTTP 요청 전송을 위한 도구
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -43,20 +32,21 @@ public class ArxivService {
     private final PdfDownloadService pdfDownloadService;
 
     /**
-     * 사용자가 입력한 검색어를 바탕으로 arXiv 논문 검색 API를 호출함
-     * 결과는 XML 형식의 문자열로 반환됨
+     * 검색어로 논문 검색 요청 (제목 기반)
+     * @param query 제목 키워드
+     * @return XML 응답 본문
      */
     public String searchPapersByTitle(String query) {
+        String encodedQuery = "ti:\"" + query.trim() + "\"";
         // arXiv API의 요청 URL을 구성함
         URI uri = UriComponentsBuilder
                 .fromUriString("https://export.arxiv.org/api/query")
-                .queryParam("search_query", "all:" + query)
+                .queryParam("search_query",  encodedQuery)
                 .queryParam("start", 0)
-                .queryParam("max_results", 5)
+                .queryParam("max_results", 5)       // 반환되는 논문 개수
                 .queryParam("sortBy", "relevance")
                 .queryParam("sortOrder", "descending")
-                .build()
-                .encode()
+                .build(false)
                 .toUri();
 
         // 본문 내용 추출해서 반환
@@ -65,42 +55,9 @@ public class ArxivService {
     }
 
     /**
-     * 사용자가 논문 링크를 직접 입력했을 때, 해당 논문의 arXiv ID를 추출해 논문의 상세 정보를 요청
-     */
-    public String fetchPaperByUrl(String url) {
-        // 논문 ID 추출 (예: https://arxiv.org/pdf/2401.00001.pdf → 2401.00001)
-        String paperId = extractIdFromUrl(url);
-
-        // 해당 논문 ID로 API 요청 URL 구성
-        URI uri = UriComponentsBuilder
-                .fromUriString("https://export.arxiv.org/api/query")
-                .queryParam("id_list", paperId)
-                .build()
-                .encode()
-                .toUri();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(List.of(MediaType.APPLICATION_ATOM_XML));
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        // 요청 결과 반환
-        ResponseEntity<String> response = restTemplate.exchange(uri, HttpMethod.GET, entity, String.class);
-        return response.getBody();
-
-        // 요청 결과 반환
-
-    }
-
-    // 논문 URL에서 ID만 추출하는 유틸리티 함수
-    private String extractIdFromUrl(String url) {
-        String last = url.substring(url.lastIndexOf('/') + 1);
-        if (last.endsWith(".pdf")) last = last.substring(0, last.length() - 4);
-        return last;
-    }
-
-    /**
-     * arXiv API로부터 받은 XML 데이터를 파싱하여 논문 목록을 만들어냄
-     * 각 논문은 ArxivPaperDto 객체로 표현
+     * 논문 검색 결과 XML을 DTO 리스트로 변환
+     * @param xml arXiv API 응답 XML
+     * @return 논문 DTO 리스트
      */
     public List<ArxivPaperDto> parseArxivResponse(String xml) {
         List<ArxivPaperDto> papers = new ArrayList<>();
@@ -158,58 +115,39 @@ public class ArxivService {
         return papers;
     }
 
-    // XML 태그에서 텍스트 값을 추출하는 함수
-    private String getText(Element parent, String tagName) {
-        NodeList nodes = parent.getElementsByTagName(tagName);
-        if (nodes.getLength() > 0 && nodes.item(0).getFirstChild() != null) {
-            return nodes.item(0).getFirstChild().getNodeValue();
-        }
-        return "";
-    }
-
     /**
-     * 검색어로 논문을 조회한 뒤, 각 논문의 PDF를 자동으로 다운로드하고 저장 경로를 DTO에 포함시킴
+     * 논문 링크 입력 시, ID 추출 후 상세 정보 조회
+     * @param url arXiv 논문 URL
+     * @return XML 응답 본문
      */
-    public List<ArxivPaperDto> searchAndDownloadPapers(String query) {
-        String xml = searchPapersByTitle(query); // arXiv 검색 결과 XML 받아오기
-        List<ArxivPaperDto> papers = parseArxivResponse(xml); // XML 파싱해서 논문 리스트로 변환
+    public String fetchPaperByUrl(String url) {
+        // 논문 ID 추출
+        String paperId = extractIdFromUrl(url);
 
-        for (ArxivPaperDto dto : papers) {
-            try {
-                // PDF 자동 다운로드
-                String savedPath = pdfDownloadService.downloadFromArxivUrl(dto.getPdfUrl());
-                dto.setLocalPdfPath(savedPath); // 저장된 경로를 DTO에 기록
-            } catch (Exception e) {
-                log.error("[PDF Download Failed] {}", dto.getTitle(), e);
-            }
-        }
+        // 해당 논문 ID로 API 요청 URL 구성
+        URI uri = UriComponentsBuilder
+                .fromUriString("https://export.arxiv.org/api/query")
+                .queryParam("id_list", paperId)
+                .build()
+                .encode()
+                .toUri();
 
-        return papers;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.APPLICATION_ATOM_XML));
+        HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+        // 요청 결과 반환
+        ResponseEntity<String> response = restTemplate.exchange(uri, HttpMethod.GET, entity, String.class);
+        return response.getBody();
     }
 
     /**
-     * 사용자가 arXiv 논문 URL을 입력했을 때 수행되는 메서드.
-     *
-     * 전체 동작 흐름:
-     * 1. 입력된 URL에서 논문 ID를 추출하여 arXiv API를 호출함
-     *    - 내부적으로 fetchPaperByUrl(url) → arXiv API 호출 (id_list 기반 요청)
-     * 2. 응답받은 XML 데이터를 파싱하여 ArxivPaperDto 객체로 변환
-     *    - parseArxivResponse(xml): <entry> 항목을 객체로 변환
-     * 3. 첫 번째 논문 DTO를 선택하고, 해당 PDF를 서버에 자동 다운로드함
-     *    - pdfDownloadService.downloadPdfToServer(pdfUrl, title): 서버의 지정 디렉토리에 PDF 저장
-     * 4. 저장된 파일 경로를 DTO의 localPdfPath 필드에 기록함
-     *
-     * 최종적으로:
-     * - 메타데이터가 포함된 ArxivPaperDto 객체 반환
-     * - PDF는 서버에 저장된 상태
-     * - 실패 시 localPdfPath는 null로 남겨짐
-     *
-     * @param url 사용자가 입력한 arXiv 논문 URL (예: https://arxiv.org/abs/2401.00001)
-     * @return PDF 경로가 포함된 ArxivPaperDto 객체
-     * @throws IllegalArgumentException 논문을 찾을 수 없을 경우 예외 발생
+     * 논문 URL 기반 PDF 다운로드 포함 동작 전체 수행
+     * @param url arXiv 논문 URL
+     * @return PDF 경로 포함된 논문 DTO
      */
     public ArxivPaperDto fetchAndDownloadByUrl(String url) {
-        // 1. 입력된 URL에서 논문 ID를 추출하여 arXiv API를 호출함
+        // 1. 입력된 URL에서 논문 ID를 추출하여 arXiv API 호출
         String xml = fetchPaperByUrl(url);
 
         // 2. 응답받은 XML 데이터를 파싱하여 ArxivPaperDto 객체로 변환
@@ -234,5 +172,25 @@ public class ArxivService {
         return dto;
     }
 
+
+    /**
+     * arXiv 논문 URL에서 논문 ID만 추출
+     */
+    private String extractIdFromUrl(String url) {
+        String last = url.substring(url.lastIndexOf('/') + 1);
+        if (last.endsWith(".pdf")) last = last.substring(0, last.length() - 4);
+        return last;
+    }
+
+    /**
+     * XML 요소에서 텍스트 값을 추출하는 유틸 함수
+     */
+    private String getText(Element parent, String tagName) {
+        NodeList nodes = parent.getElementsByTagName(tagName);
+        if (nodes.getLength() > 0 && nodes.item(0).getFirstChild() != null) {
+            return nodes.item(0).getFirstChild().getNodeValue();
+        }
+        return "";
+    }
 
 }

@@ -6,16 +6,28 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.file.*;
 
+
+/**
+ * arXiv 논문의 PDF를 로컬 서버에 다운로드하여 저장하는 서비스 클래스.
+ * 주요 기능:
+ *  - abs 링크를 pdf 링크로 변환
+ *  - .pdf 확장자 보정
+ *  - 파일 이름을 논문 ID 기반으로 생성
+ *  - 다운로드 결과를 지정된 디렉토리에 저장
+ */
 @Service
 public class PdfDownloadService {
 
+    // PDF 저장 디렉토리
     private static final String PDF_DIR = "pdfs";
 
     /**
      * arXiv의 abs 또는 pdf 링크에서 PDF 다운로드
+     * @param url arXiv의 abs 링크 또는 pdf 링크
+     * @return 저장된 PDF 파일의 절대 경로
+     * @throws IOException 다운로드 실패 시
      */
     public String downloadFromArxivUrl(String url) throws IOException {
         String normalized = normalizeArxivPdfUrl(url);      // abs→pdf, .pdf 보정
@@ -27,7 +39,9 @@ public class PdfDownloadService {
     }
 
     /**
-     * pdfUrl을 pdf 다운로드 링크로 정규화
+     * 입력된 링크를 pdf 다운로드 가능한 링크로 정규화
+     * @param url 원본 arXiv 링크
+     * @return 정규화된 PDF 다운로드 링크
      */
     private String normalizeArxivPdfUrl(String url) {
         // abs 링크면 → pdf + .pdf
@@ -47,7 +61,9 @@ public class PdfDownloadService {
     }
 
     /**
-     * arXiv ID로부터 이름 지정
+     * arXiv PDF 링크에서 논문 ID 추출 -> 저장할 PDF 파일 이름 반환하는 함수
+     * @param url arXiv PDF URL
+     * @return 저장할 파일 이름
      */
     private String buildPdfFileNameFromUrl(String url) {
         // 마지막 세그먼트 추출
@@ -60,7 +76,10 @@ public class PdfDownloadService {
     }
 
     /**
-     * 공통 다운로드 처리 메서드
+     * HTTP GET 방식으로 URL에서 파일을 다운로드하여 지정된 경로에 저장
+     * @param url      다운로드 대상 URL
+     * @param filePath 저장할 로컬 경로
+     * @throws IOException 다운로드 실패 시
      */
     private void download(String url, Path filePath) throws IOException {
         Files.createDirectories(filePath.getParent());

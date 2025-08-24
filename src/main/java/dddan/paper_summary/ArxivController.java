@@ -14,14 +14,7 @@ public class ArxivController {
     private final ArxivService arxivService;
     private final PdfDownloadService pdfDownloadService;
 
-    // 제목 기반 논문 검색
-    @GetMapping("/search")
-    public List<ArxivPaperDto> search(@RequestParam String query) {
-        String xml = arxivService.searchPapersByTitle(query);
-        return arxivService.parseArxivResponse(xml);
-    }
-
-    // 링크 기반 논문 조회
+    // URL 기반 논문 메타데이터 조회
     @GetMapping("/fetch")
     public ResponseEntity<ArxivPaperDto> fetchAndDownloadByUrl(@RequestParam String url) {
         try {
@@ -33,13 +26,7 @@ public class ArxivController {
         }
     }
 
-    // 논문 검색 후 PDF 다운로드
-    @GetMapping("/search-download")
-    public List<ArxivPaperDto> searchAndDownload(@RequestParam String query) {
-        return arxivService.searchAndDownloadPapers(query);
-    }
-
-    // 논문 자동 다운로드
+    // 논문의 메타데이터 중 pdfURL 기반 논문 자동 다운로드
     @GetMapping("/direct-download")
     public ResponseEntity<?> downloadFromDirectUrl(@RequestParam String url) {
         try {
@@ -51,5 +38,17 @@ public class ArxivController {
         }
     }
 
+    // 제목 기반 논문 검색
+    @GetMapping("/search")
+    public ResponseEntity<?> smartSearch(@RequestParam String query) {
+        String xml = arxivService.searchPapersByTitle(query);
+        List<ArxivPaperDto> papers = arxivService.parseArxivResponse(xml);
+
+        if (papers.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No papers found.");
+        }
+        // 논문 객체 리스트 반환
+        return ResponseEntity.ok(papers);
+    }
 
 }
