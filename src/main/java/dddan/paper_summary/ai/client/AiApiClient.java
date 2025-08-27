@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import dddan.paper_summary.ai.dto.SummaryApiRequest;
+import dddan.paper_summary.ai.dto.SummaryApiResponse;
 
 /**
  * AI API 호출 클라이언트
