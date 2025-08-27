@@ -29,7 +29,7 @@ public class ObjectStorageService {
     private String endpoint; // 예: https://kr.object.ncloudstorage.com
 
     /**
-     * ✅ 확장자 기반 폴더 구분하여 업로드 (기존 단순 파일 업로드)
+     * 확장자 기반 폴더 구분하여 업로드 (기존 단순 파일 업로드)
      */
     public String uploadLocalFile(Path localPath, boolean publicRead) throws IOException {
         if (!Files.exists(localPath)) {
@@ -44,7 +44,7 @@ public class ObjectStorageService {
     }
 
     /**
-     * ✅ 지정한 key 경로로 업로드 (컨트롤러에서 세부 키 직접 지정 시 사용)
+     * 지정한 key 경로로 업로드 (컨트롤러에서 세부 키 직접 지정 시 사용)
      */
     public String uploadLocalFile(Path localPath, String key, boolean publicRead) throws IOException {
         if (!Files.exists(localPath)) {
@@ -67,7 +67,7 @@ public class ObjectStorageService {
     }
 
     /**
-     * ✅ 확장자에 따라 폴더 구분
+     * 확장자에 따라 폴더 구분
      */
     private String getFolderByExtension(String filename) {
         String lower = filename.toLowerCase();
