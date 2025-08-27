@@ -12,6 +12,18 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 ncp:
   s3:
     access-key: ${NCP_API_ACCESS_KEY}
