@@ -42,10 +42,8 @@ dependencies {
     // 스프링 부트에서 자동 연동 위해 필요할 수 있음
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // 캐시 기능
-    implementation 'org.springframework.boot:spring-boot-starter-cache'
-    implementation 'com.github.ben-manes.caffeine:caffeine'
-
+    // NCP Object Storage(S3 호환)
+    implementation 'software.amazon.awssdk:s3:2.25.36'
 }
 
 tasks.named('test') {

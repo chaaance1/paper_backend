@@ -1,14 +1,21 @@
 spring:
-  cache:
-    cache-names:
-      - parsedMeta
-      - sectionList
-      - sectionText
-      - mediaList
-    caffeine:
-      spec: maximumSize=500,expireAfterWrite=24h
-
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       - org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
+
+  config:
+    import: optional:classpath:properties/env.properties
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+ncp:
+  s3:
+    access-key: ${NCP_API_ACCESS_KEY}
+    secret-key: ${NCP_API_SECRET_KEY}
+    endpoint: https://kr.object.ncloudstorage.com
+    region: kr-standard
+    bucket: ${NCP_BUCKET}
