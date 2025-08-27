@@ -1,4 +1,4 @@
-package dddan.paper_summary;
+package dddan.paper_summary.arxiv.service;
 
 import org.springframework.stereotype.Service;
 
