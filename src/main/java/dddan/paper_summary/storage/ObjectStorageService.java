@@ -3,15 +3,17 @@ package dddan.paper_summary.storage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 @Slf4j
 @Service
@@ -24,50 +26,71 @@ public class ObjectStorageService {
     private String bucketName;
 
     @Value("${ncp.s3.endpoint}")
-    private String endpoint;
+    private String endpoint; // 예: https://kr.object.ncloudstorage.com
 
-    public String uploadFile(MultipartFile file) throws IOException {
-        String originalFileName = file.getOriginalFilename();
-        if (originalFileName == null) {
-            throw new IllegalArgumentException("파일 이름이 없습니다.");
+    /**
+     * ✅ 확장자 기반 폴더 구분하여 업로드 (기존 단순 파일 업로드)
+     */
+    public String uploadLocalFile(Path localPath, boolean publicRead) throws IOException {
+        if (!Files.exists(localPath)) {
+            throw new IllegalArgumentException("파일이 존재하지 않습니다: " + localPath);
         }
 
-        // 확장자 기반 폴더 결정
-        String folder = getFolderByExtension(originalFileName);
-        String key = folder + "/" + originalFileName;
+        String filename = localPath.getFileName().toString();
+        String folder = getFolderByExtension(filename);
+        String key = folder + "/" + filename;
 
-        try {
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .contentType(file.getContentType())
-                    .acl(ObjectCannedACL.PUBLIC_READ)
-                    .build(); // serverSideEncryption 생략 가능
-
-            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(file.getBytes()));
-
-            String host = URI.create(endpoint).getHost();
-            return String.format("https://%s.%s/%s", bucketName, host, key);
-
-        } catch (Exception e) {
-            log.error("파일 업로드 중 오류 발생: {}", e.getMessage(), e);
-            throw new IOException("파일 업로드 중 오류 발생: " + e.getMessage(), e);
-        }
+        return uploadLocalFile(localPath, key, publicRead);
     }
 
-    // 확장자에 따라 폴더 분기
+    /**
+     * ✅ 지정한 key 경로로 업로드 (컨트롤러에서 세부 키 직접 지정 시 사용)
+     */
+    public String uploadLocalFile(Path localPath, String key, boolean publicRead) throws IOException {
+        if (!Files.exists(localPath)) {
+            throw new IllegalArgumentException("파일이 존재하지 않습니다: " + localPath);
+        }
+
+        String contentType = Files.probeContentType(localPath);
+        if (contentType == null) contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
+        var put = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType(contentType)
+                .acl(publicRead ? ObjectCannedACL.PUBLIC_READ : null)
+                .build();
+
+        s3Client.putObject(put, RequestBody.fromFile(localPath));
+
+        return buildPublicUrl(key);
+    }
+
+    /**
+     * ✅ 확장자에 따라 폴더 구분
+     */
     private String getFolderByExtension(String filename) {
-        String lowerName = filename.toLowerCase();
-        if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp")) {
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png") ||
+                lower.endsWith(".gif") || lower.endsWith(".bmp")) {
             return "images";
-        } else if (lowerName.endsWith(".md") || lowerName.endsWith(".markdown")) {
-            return "markdown";
-        } else if (lowerName.endsWith(".pdf")) {
+        } else if (lower.endsWith(".pdf")) {
             return "pdf";
-        } else if (lowerName.endsWith(".csv")) {
+        } else if (lower.endsWith(".csv")) {
             return "csv";
+        } else if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
+            return "markdown";
         } else {
-            return "etc"; // 예외 확장자 처리 (선택)
+            return "etc";
         }
     }
+
+    /**
+     * 공개 접근 URL 생성
+     */
+    public String buildPublicUrl(String key) {
+        String host = URI.create(endpoint).getHost();
+        return "https://" + host + "/" + bucketName + "/" + key;
+    }
+
 }
