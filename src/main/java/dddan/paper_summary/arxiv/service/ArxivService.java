@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.w3c.dom.*;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.factory.annotation.Value;
+
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -33,6 +36,8 @@ public class ArxivService {
     private final ObjectStorageService objectStorageService;
     private final PaperRepository paperRepository;
 
+    @Value("${flask.base-url}")
+    private String flaskBaseUrl;
     /**
      * 제목 기반 논문 검색 (최대 5개)
      */
@@ -165,6 +170,8 @@ public class ArxivService {
 
             paperRepository.save(entity);
 
+            String paperId = String.valueOf(entity.getId());
+            requestParsingToFlask(paperId, storageUrl);
 
         } catch (IOException e) {
             log.error("[UPLOAD ERROR] {}", dto.getPdfUrl(), e);
@@ -207,5 +214,27 @@ public class ArxivService {
             return nodes.item(0).getTextContent().trim();
         }
         return "";
+    }
+    @Async
+    public void requestParsingToFlask(String paperId, String pdfUrl) {
+        try {
+            String url = flaskBaseUrl + "/parse";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String json = """
+                {"paperId":"%s","pdfUrl":"%s"}
+            """.formatted(paperId, pdfUrl);
+
+            HttpEntity<String> entity = new HttpEntity<>(json, headers);
+            ResponseEntity<String> res = restTemplate.postForEntity(url, entity, String.class);
+            if (!res.getStatusCode().is2xxSuccessful()) {
+                log.warn("[Flask] 파싱요청 실패 status={} body={}", res.getStatusCode(), res.getBody());
+            } else {
+                log.info("[Flask] 파싱요청 성공 body={}", res.getBody());
+            }
+        } catch (Exception e) {
+            log.warn("[Flask] 파싱요청 예외: {}", e.getMessage(), e);
+        }
     }
 }

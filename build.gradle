@@ -38,7 +38,8 @@ dependencies {
 
     implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
     implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
-
+	
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
     // 스프링 부트에서 자동 연동 위해 필요할 수 있음
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
