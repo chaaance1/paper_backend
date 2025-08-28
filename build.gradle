@@ -44,6 +44,7 @@ dependencies {
 
     // NCP Object Storage(S3 호환)
     implementation 'software.amazon.awssdk:s3:2.25.36'
+
 }
 
 tasks.named('test') {
