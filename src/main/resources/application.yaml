@@ -1,4 +1,4 @@
-spring:
+ spring:
   config:
     import: optional:classpath:properties/env.properties
 
@@ -34,3 +34,8 @@ ncp:
     endpoint: https://kr.object.ncloudstorage.com
     region: kr-standard
     bucket: ${NCP_BUCKET}
+
+flask:
+  base-url: ${FLASK_BASE_URL:http://127.0.0.1:5001}  # Flask 서버 주소 
+
+    
