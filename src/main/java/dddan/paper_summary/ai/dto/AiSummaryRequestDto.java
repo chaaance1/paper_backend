@@ -1,23 +1,21 @@
 package dddan.paper_summary.ai.dto;
 
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 
 /**
- * 논문 요약 요청 DTO (프론트 → 백엔드)
- * - 논문 ID와 사용자 ID를 전달받아 섹션별로 요약 요청을 처리함
- * - userId는 로그인하지 않은 경우 null 가능
+ * AI 요약 API 요청용 DTO (섹션 1개당 1개 요청)
  */
-@Getter
-@Setter
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
 public class AiSummaryRequestDto {
-    private Long paperId;
-    private String userId;
-
-    public AiSummaryRequestDto() {}
-
-    public AiSummaryRequestDto(Long paperId, String userId) {
-        this.paperId = paperId;
-        this.userId = userId;
-    }
+    @JsonProperty("section_id") private int sectionId;
+    @JsonProperty("table_of_contents") private String tableOfContents;
+    @JsonProperty("paper_title") private String paperTitle;
+    @JsonProperty("section_title") private String sectionTitle;
+    @JsonProperty("text") private String text;
+    @JsonProperty("images") private List<String> images;
+    @JsonProperty("tables") private List<String> tables;
+    @JsonProperty("equations") private List<String> equations;
 }

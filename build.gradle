@@ -44,6 +44,12 @@ dependencies {
 
     // NCP Object Storage(S3 호환)
     implementation 'software.amazon.awssdk:s3:2.25.36'
+
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    implementation 'org.springframework.security:spring-security-crypto'
+
+    implementation 'org.springframework.boot:spring-boot-starter-security'
 }
 
 tasks.named('test') {

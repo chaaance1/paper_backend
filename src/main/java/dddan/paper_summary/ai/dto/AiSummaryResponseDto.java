@@ -1,21 +1,20 @@
 package dddan.paper_summary.ai.dto;
 
-import lombok.Getter;
-import lombok.Setter;
-
+import lombok.*;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * 전체 논문 요약 응답 DTO (백엔드 → 프론트)
- * - 논문 기본 정보(제목, 저자, 날짜)와 섹션별 요약 리스트를 포함
+ * AI 요약 API 응답 DTO
  */
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class AiSummaryResponseDto {
-
-    private String paperTitle;      // 논문 제목
-    private String authors;         // 논문 저자
-    private String publishedDate;   // 논문 발행일
-
-    private List<SectionSummaryDto> sectionSummaries; // 섹션별 요약 리스트
+    @JsonProperty("section_id") private int sectionId;
+    @JsonProperty("text_result") private String textResult;
+    @JsonProperty("image_results") private List<String> imageResults;
+    @JsonProperty("table_results") private List<String> tableResults;
+    @JsonProperty("equation_results") private List<String> equationResults;
 }

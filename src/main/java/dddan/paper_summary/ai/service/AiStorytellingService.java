@@ -1,45 +1,50 @@
 package dddan.paper_summary.ai.service;
 
 import dddan.paper_summary.ai.client.AiApiClient;
+import dddan.paper_summary.ai.domain.Storytelling;
+import dddan.paper_summary.ai.dto.StoryRequestDto;
 import dddan.paper_summary.ai.dto.StorytellingRequestDto;
 import dddan.paper_summary.ai.dto.StorytellingResponseDto;
-import dddan.paper_summary.arxiv.domain.Paper;
-import dddan.paper_summary.arxiv.repo.PaperRepository;
+import dddan.paper_summary.ai.repo.StorytellingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 논문 전체 텍스트 기반 스토리텔링 생성 서비스
- * - 논문 ID를 통해 논문 전체 텍스트를 가져오고
- * - AI API로 요청 후 요약 결과를 반환
- */
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class AiStorytellingService {
 
-    private final PaperRepository paperRepository;
     private final AiApiClient aiApiClient;
+    private final StorytellingRepository storytellingRepository;
 
     /**
-     * 논문 ID를 기반으로 전체 텍스트 기반 스토리 요약 요청
-     * @param paperId 논문 ID
-     * @return 스토리 요약 결과 DTO
+     * 전체 텍스트로 AI 스토리텔링 요청 후
+     * - 비회원: DB 저장 없이 응답 반환
+     * - 회원: 섹션 단위로 저장 후 응답 반환
      */
-    public StorytellingResponseDto generateStory(Long paperId) {
-        // 1. 논문 조회
-        Paper paper = paperRepository.findById(paperId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 논문이 존재하지 않습니다."));
+    @Transactional
+    public StorytellingResponseDto requestAndSave(StoryRequestDto req) {
+        StorytellingRequestDto aiReq = new StorytellingRequestDto(req.getFullText());
+        StorytellingResponseDto resp = aiApiClient.requestStorytelling(aiReq);
 
-        // 2. 전체 텍스트 추출 -> 이 부분 채워야 함
-        String fullText = paper.getParsedFullText();
-        if (fullText == null || fullText.isBlank()) {
-            throw new IllegalStateException("논문 전체 텍스트가 존재하지 않습니다.");
-        }
+        if (req.getUserId() == null) return resp;           // 비회원: 저장 생략
+        List<StorytellingResponseDto.Section> sections = resp.getSections();
+        if (sections == null || sections.isEmpty()) return resp;
 
-        // 3. 요청 DTO 생성
-        StorytellingRequestDto requestDto = new StorytellingRequestDto(fullText);
+        List<Storytelling> entities = sections.stream()
+                .map(s -> Storytelling.builder()
+                        .paperId(req.getPaperId())
+                        .userId(req.getUserId())
+                        .step(s.getStep())
+                        .heading(s.getHeading())
+                        .content(s.getContent())
+                        .build())
+                .collect(Collectors.toList()); // ✅ Collectors 사용
 
-        // 4. AI 서버에 요청 후 응답 반환
-        return aiApiClient.requestStorySummary(requestDto);
+        storytellingRepository.saveAll(entities);
+        return resp;
     }
 }

@@ -1,13 +1,19 @@
 package dddan.paper_summary.ai.controller;
 
+import dddan.paper_summary.ai.dto.StoryRequestDto;
 import dddan.paper_summary.ai.dto.StorytellingResponseDto;
 import dddan.paper_summary.ai.service.AiStorytellingService;
+import dddan.paper_summary.arxiv.domain.Paper;
+import dddan.paper_summary.arxiv.repo.PaperRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
- * 스토리텔링 API 컨트롤러
- * - 프론트에서 논문 ID를 요청하면 전체 텍스트 기반 요약을 반환
+ * 논문 전체 스토리텔링 요청 컨트롤러
  */
 @RestController
 @RequiredArgsConstructor
@@ -15,14 +21,26 @@ import org.springframework.web.bind.annotation.*;
 public class AiStorytellingController {
 
     private final AiStorytellingService storytellingService;
+    private final PaperRepository paperRepository;
 
-    /**
-     * 논문 ID로 스토리 요약 생성 요청
-     * @param paperId 논문 ID
-     * @return 스토리 요약 결과
-     */
-    @GetMapping("/{paperId}")
-    public StorytellingResponseDto generateStory(@PathVariable Long paperId) {
-        return storytellingService.generateStory(paperId);
+    @PostMapping
+    public ResponseEntity<?> handleStoryRequest(@RequestBody StoryRequestDto request) {
+        if (request.getPaperId() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "paperId 누락"));
+        }
+
+        Paper paper = paperRepository.findById(request.getPaperId()).orElse(null);
+        if (paper == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "존재하지 않는 논문 ID"));
+        }
+
+        try {
+            StorytellingResponseDto result = storytellingService.requestAndSave(request);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "스토리텔링 처리 중 서버 오류"));
+        }
     }
 }

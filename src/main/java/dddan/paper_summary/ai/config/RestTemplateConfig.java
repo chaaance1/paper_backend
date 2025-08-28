@@ -1,4 +1,4 @@
-package dddan.paper_summary.config;
+package dddan.paper_summary.ai.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

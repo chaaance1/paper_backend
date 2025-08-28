@@ -1,80 +1,60 @@
 package dddan.paper_summary.ai.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dddan.paper_summary.ai.client.AiApiClient;
-import dddan.paper_summary.ai.dto.*;
-import dddan.paper_summary.arxiv.domain.Paper;
-import dddan.paper_summary.arxiv.domain.PaperSection;
-import dddan.paper_summary.arxiv.repo.PaperRepository;
+import dddan.paper_summary.ai.domain.Summary;
+import dddan.paper_summary.ai.dto.AiSummaryRequestDto;
+import dddan.paper_summary.ai.dto.AiSummaryResponseDto;
+import dddan.paper_summary.ai.dto.SummaryRequestDto;
+import dddan.paper_summary.ai.repo.SummaryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 논문 섹션 요약 서비스
- * - 논문 ID를 기반으로 섹션별 파싱된 내용을 가져와 AI 요약을 수행
- */
 @Service
 @RequiredArgsConstructor
 public class AiSummaryService {
 
-    private final PaperRepository paperRepository;
     private final AiApiClient aiApiClient;
+    private final SummaryRepository summaryRepository;
+    private final ObjectMapper om = new ObjectMapper();
 
-    /**
-     * 논문 ID를 기반으로 섹션별 요약을 수행하고 결과를 조합하여 반환
-     *
-     * @param requestDto paperId, userId가 포함된 요청 DTO
-     * @return 전체 논문 요약 응답 DTO
-     */
-    public AiSummaryResponseDto summarizePaper(AiSummaryRequestDto requestDto) {
-        Long paperId = requestDto.getPaperId();
+    @Transactional
+    public List<AiSummaryResponseDto> summarizeAllSections(SummaryRequestDto req) {
+        List<AiSummaryResponseDto> results = new ArrayList<>();
 
-        // 1. 논문 조회
-        Paper paper = paperRepository.findById(paperId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 논문이 존재하지 않습니다."));
+        for (AiSummaryRequestDto sectionReq : req.getSections()) {
+            // 방어: 섹션 요청에 paperTitle이 비어있으면 상위 값을 사용
+            if (sectionReq.getPaperTitle() == null) {
+                sectionReq.setPaperTitle(req.getPaperTitle());
+            }
 
-        // 2. 논문 섹션들 가져오기
-        List<PaperSection> sections = paper.getSections(); // Paper 엔티티에 getSections() 있어야 함
+            AiSummaryResponseDto resp = aiApiClient.requestSummary(sectionReq);
+            results.add(resp);
 
-        List<SectionSummaryDto> summaryList = new ArrayList<>();
-
-        for (PaperSection section : sections) {
-            // 3. 섹션별 요약 요청 구성
-            SummaryApiRequest summaryRequest = new SummaryApiRequest(
-                    section.getSectionId(),
-                    section.getTableOfContents(),
-                    paper.getTitle(),
-                    section.getTitle(),
-                    section.getText(),
-                    section.getImages(),
-                    section.getTables(),
-                    section.getEquations()
-            );
-
-            // 4. AI에 요청 → 요약 응답 받기
-            SummaryApiResponse aiResponse = aiApiClient.requestSectionSummary(summaryRequest);
-
-            // 5. 응답을 SectionSummaryDto로 변환
-            SectionSummaryDto summaryDto = new SectionSummaryDto();
-            summaryDto.setSectionId(section.getSectionId());
-            summaryDto.setSectionTitle(section.getTitle());
-            summaryDto.setTextResult(aiResponse.getTextResult());
-            summaryDto.setImageResults(aiResponse.getImageResults());
-            summaryDto.setTableResults(aiResponse.getTableResults());
-            summaryDto.setEquationResults(aiResponse.getEquationResults());
-
-            summaryList.add(summaryDto);
+            // 회원만 저장
+            if (req.getUserId() != null) {
+                summaryRepository.save(
+                        Summary.builder()
+                                .paperId(req.getPaperId())
+                                .userId(req.getUserId())
+                                .sectionOrder(resp.getSectionId())
+                                .summaryText(resp.getTextResult())
+                                .summaryFigure(toJson(resp.getImageResults()))
+                                .summaryTable(toJson(resp.getTableResults()))
+                                .summaryFormula(toJson(resp.getEquationResults()))
+                                .build()
+                );
+            }
         }
+        return results;
+    }
 
-        // 6. 전체 논문 요약 응답 조립
-        AiSummaryResponseDto result = new AiSummaryResponseDto();
-        result.setPaperTitle(paper.getTitle());
-        result.setAuthors(paper.getAuthors());
-        result.setPublishedDate(paper.getPublishedDate().toString());
-        result.setSectionSummaries(summaryList);
-
-        return result;
+    private String toJson(List<String> v) {
+        try { return om.writeValueAsString(v == null ? List.of() : v); }
+        catch (Exception e) { return "[]"; }
     }
 }
