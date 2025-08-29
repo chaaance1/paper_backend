@@ -1,4 +1,4 @@
-package dddan.paper_summary.controller;
+package dddan.paper_summary.storage.controller;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;

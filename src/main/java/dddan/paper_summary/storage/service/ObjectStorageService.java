@@ -1,4 +1,4 @@
-package dddan.paper_summary.storage;
+package dddan.paper_summary.storage.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

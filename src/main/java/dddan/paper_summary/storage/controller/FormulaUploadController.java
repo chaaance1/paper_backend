@@ -1,9 +1,9 @@
-package dddan.paper_summary.controller;
+package dddan.paper_summary.storage.controller;
 
-import dddan.paper_summary.storage.ObjectStorageService;
-import dddan.paper_summary.storage.entity.Paper;
+import dddan.paper_summary.arxiv.domain.Paper;
+import dddan.paper_summary.arxiv.repo.PaperRepository;
+import dddan.paper_summary.storage.service.ObjectStorageService;
 import dddan.paper_summary.storage.entity.Formula;
-import dddan.paper_summary.storage.repository.PaperRepository;
 import dddan.paper_summary.storage.repository.FormulaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,7 +40,7 @@ public class FormulaUploadController {
             if (paperOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body("[ERROR] 해당 arxiv_id의 논문이 존재하지 않습니다.");
             }
-            Integer paperId = paperOpt.get().getId();
+            Integer paperId = Math.toIntExact(paperOpt.get().getId());
 
             // 2) 파일명 유효성 검증
             String originalFilename = StringUtils.cleanPath(file.getOriginalFilename());
