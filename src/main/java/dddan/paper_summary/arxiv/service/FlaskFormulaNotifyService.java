@@ -26,7 +26,7 @@ public class FlaskFormulaNotifyService {
      */
     public void sendToFlask(String storageUrl) {
         if (flaskUrl == null || flaskUrl.isBlank()) {
-            log.warn("⚠️ Flask URL이 설정되지 않았습니다. 요청을 생략합니다.");
+            log.warn("[ERROR] Flask URL이 설정되지 않았습니다. 요청을 생략합니다.");
             return;
         }
 
@@ -40,12 +40,12 @@ public class FlaskFormulaNotifyService {
             ResponseEntity<String> response = restTemplate.postForEntity(flaskUrl, request, String.class);
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("✅ Flask 수식 파싱 요청 성공: {}", response.getBody());
+                log.info("[LOG] Flask 수식 파싱 요청 성공: {}", response.getBody());
             } else {
-                log.warn("⚠️ Flask 응답 코드: {} - 응답 본문: {}", response.getStatusCode(), response.getBody());
+                log.warn("[ERROR] Flask 응답 코드: {} - 응답 본문: {}", response.getStatusCode(), response.getBody());
             }
         } catch (Exception e) {
-            log.error("❌ Flask 수식 파싱 API 호출 중 오류 발생", e);
+            log.error("[ERROR] Flask 수식 파싱 API 호출 중 오류 발생", e);
         }
     }
 }

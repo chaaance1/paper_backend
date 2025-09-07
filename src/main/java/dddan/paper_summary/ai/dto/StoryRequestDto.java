@@ -16,4 +16,5 @@ public class StoryRequestDto {
     private Long paperId;         // 논문 ID
     private String fullText;      // 논문 전체 텍스트
     private String userId;        // 요청한 사용자 ID
+    private java.util.UUID requestId;
 }

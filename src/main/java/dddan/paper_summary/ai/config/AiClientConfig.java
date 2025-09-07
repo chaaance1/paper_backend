@@ -9,7 +9,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class AiClientConfig {
 
     @Bean(name = "aiWebClient")
-    public WebClient aiWebClient(@Value("${ai.base-url}") String baseUrl) {
+    public WebClient aiWebClient(@Value("${ai.summary.api-url}") String baseUrl) {
         return WebClient.builder()
                 .baseUrl(baseUrl)
                 .build();

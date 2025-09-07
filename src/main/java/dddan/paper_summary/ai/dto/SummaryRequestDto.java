@@ -1,7 +1,6 @@
 package dddan.paper_summary.ai.dto;
 
 import lombok.*;
-
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -19,6 +18,7 @@ public class SummaryRequestDto {
     private Long paperId;                  // 논문 ID
     private String paperTitle;             // 논문 제목
     private String userId;                 // 요청한 사용자 ID
+
     @JsonProperty("sections")
     private List<AiSummaryRequestDto> sections;
 }

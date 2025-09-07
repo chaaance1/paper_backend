@@ -2,7 +2,6 @@ package dddan.paper_summary.ai.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "storytelling")

@@ -42,7 +42,7 @@ public class AiStorytellingService {
                         .heading(s.getHeading())
                         .content(s.getContent())
                         .build())
-                .collect(Collectors.toList()); // ✅ Collectors 사용
+                .collect(Collectors.toList()); // Collectors 사용
 
         storytellingRepository.saveAll(entities);
         return resp;
