@@ -4,6 +4,11 @@ import dddan.paper_summary.arxiv.dto.ArxivPaperDto;
 import dddan.paper_summary.arxiv.domain.Paper;
 import dddan.paper_summary.arxiv.repo.PaperRepository;
 import dddan.paper_summary.storage.service.ObjectStorageService;
+//parse
+import dddan.paper_summary.parse.ParseService;
+import dddan.paper_summary.parse.dto.ParseRequestDto;
+import dddan.paper_summary.parse.domain.model.PaperRef;
+
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,9 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.w3c.dom.*;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.beans.factory.annotation.Value;
-
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -26,6 +28,13 @@ import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
 
+// 맨 위 import 영역에 추가
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.net.URL;
+
+
+
 @RequiredArgsConstructor
 @Service
 public class ArxivService {
@@ -35,9 +44,8 @@ public class ArxivService {
     private final PdfDownloadService pdfDownloadService;
     private final ObjectStorageService objectStorageService;
     private final PaperRepository paperRepository;
+    private final ParseService parseService;   // ★ 파싱 서비스
 
-    @Value("${flask.base-url}")
-    private String flaskBaseUrl;
     /**
      * 제목 기반 논문 검색 (최대 5개)
      */
@@ -170,8 +178,16 @@ public class ArxivService {
 
             paperRepository.save(entity);
 
+            // 5. ★ Spring 내부 파싱 실행
             String paperId = String.valueOf(entity.getId());
-            requestParsingToFlask(paperId, storageUrl);
+
+            parseService.parse(
+                    PaperRef.builder()
+                            .paperId(entity.getId())                 // Long 타입 그대로
+                            .filename(storageUrl)                    // S3 공개/프리사인드 URL 또는 로컬 경로
+                            .inputStreamSupplier(() -> openStream(storageUrl))
+                            .build()
+            );
 
         } catch (IOException e) {
             log.error("[UPLOAD ERROR] {}", dto.getPdfUrl(), e);
@@ -215,26 +231,12 @@ public class ArxivService {
         }
         return "";
     }
-    @Async
-    public void requestParsingToFlask(String paperId, String pdfUrl) {
-        try {
-            String url = flaskBaseUrl + "/parse";
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            String json = """
-                {"paperId":"%s","pdfUrl":"%s"}
-            """.formatted(paperId, pdfUrl);
-
-            HttpEntity<String> entity = new HttpEntity<>(json, headers);
-            ResponseEntity<String> res = restTemplate.postForEntity(url, entity, String.class);
-            if (!res.getStatusCode().is2xxSuccessful()) {
-                log.warn("[Flask] 파싱요청 실패 status={} body={}", res.getStatusCode(), res.getBody());
-            } else {
-                log.info("[Flask] 파싱요청 성공 body={}", res.getBody());
-            }
-        } catch (Exception e) {
-            log.warn("[Flask] 파싱요청 예외: {}", e.getMessage(), e);
+    // ArxivService.java 하단에 헬퍼 추가
+    private InputStream openStream(String pathOrUrl) throws IOException {
+        if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+            return new URL(pathOrUrl).openStream();          // 공개/프리사인드 URL
         }
+        return Files.newInputStream(Path.of(pathOrUrl));     // 로컬 경로일 때
     }
 }
+
