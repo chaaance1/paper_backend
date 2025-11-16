@@ -4,11 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cache.annotation.EnableCaching;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "dddan.paper_summary")
+@EnableCaching
 public class PaperSummaryApplication {
-
-	public static void main(String[] args) {
+    public static void main(String[] args) {
         SpringApplication.run(PaperSummaryApplication.class, args);
-	}
-
+    }
 }
