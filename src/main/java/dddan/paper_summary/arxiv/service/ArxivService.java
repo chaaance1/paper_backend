@@ -1,9 +1,6 @@
 package dddan.paper_summary.arxiv.service;
 
 import dddan.paper_summary.arxiv.dto.ArxivPaperDto;
-import dddan.paper_summary.arxiv.domain.Paper;
-import dddan.paper_summary.arxiv.repo.PaperRepository;
-import dddan.paper_summary.storage.service.ObjectStorageService;
 //parse
 import dddan.paper_summary.parse.ParseService;
 import dddan.paper_summary.parse.dto.ParseRequestDto;
@@ -42,8 +39,6 @@ public class ArxivService {
     private static final Logger log = LoggerFactory.getLogger(ArxivService.class);
     private final RestTemplate restTemplate = new RestTemplate();
     private final PdfDownloadService pdfDownloadService;
-    private final ObjectStorageService objectStorageService;
-    private final PaperRepository paperRepository;
     private final ParseService parseService;   // ★ 파싱 서비스
 
     /**
@@ -118,7 +113,7 @@ public class ArxivService {
 
                 papers.add(new ArxivPaperDto(
                         arxivId, title.trim(), summary.trim(), published, updated,
-                        authorsList, idUrl, pdfUrl, null
+                        authorsList, idUrl, pdfUrl
                 ));
             }
 
@@ -130,7 +125,7 @@ public class ArxivService {
     }
 
     /**
-     * 논문 상세 URL → 메타데이터 + PDF 다운로드 + 클라우드 업로드
+     * 논문 상세 URL → 메타데이터 + PDF 다운로드
      */
     public ArxivPaperDto uploadPaperFromUrl(String url) {
         String xml = fetchPaperByUrl(url);
@@ -147,45 +142,13 @@ public class ArxivService {
             String savedPath = pdfDownloadService.downloadFromArxivUrl(dto.getPdfUrl());
             Path localPath = Path.of(savedPath);
 
-            // 2. 클라우드 업로드
-            String storageUrl = objectStorageService.uploadLocalFile(localPath, true);
-            dto.setStorageUrl(storageUrl);
-
-            // 3. 로컬 파일 삭제
-            Files.deleteIfExists(localPath);
-
-            // 4. 데이터베이스에 메타데이터 업로드
-            Paper entity = paperRepository.findByArxivId(dto.getArxivId())
-                    .map(p -> {
-                        // 기존 레코드 갱신
-                        p.setTitle(dto.getTitle());
-                        p.setAuthors(String.join(", ", dto.getAuthors()));
-                        p.setPublishedDate(dto.getPublishedDate());  // 아래 DTO 변환 메서드 사용(아래 참고)
-                        p.setUpdatedDate(dto.getUpdatedDate());
-                        p.setPdfPath(dto.getStorageUrl());
-                        p.setAbstractText(dto.getSummary());
-                        return p;
-                    })
-                    .orElseGet(() -> Paper.builder()
-                            .arxivId(dto.getArxivId())
-                            .title(dto.getTitle())
-                            .authors(String.join(", ", dto.getAuthors()))
-                            .publishedDate(dto.getPublishedDate())
-                            .updatedDate(dto.getUpdatedDate())
-                            .pdfPath(dto.getStorageUrl())
-                            .abstractText(dto.getSummary())
-                            .build());
-
-            paperRepository.save(entity);
 
             // 5. ★ Spring 내부 파싱 실행
-            String paperId = String.valueOf(entity.getId());
-
             parseService.parse(
                     PaperRef.builder()
-                            .paperId(entity.getId())                 // Long 타입 그대로
-                            .filename(storageUrl)                    // S3 공개/프리사인드 URL 또는 로컬 경로
-                            .inputStreamSupplier(() -> openStream(storageUrl))
+                            .paperId(null)                 // Long 타입 그대로
+                            .filename(localPath.toString())                    // S3 공개/프리사인드 URL 또는 로컬 경로
+                            .inputStreamSupplier(() -> openStream(localPath.toString()))
                             .build()
             );
 

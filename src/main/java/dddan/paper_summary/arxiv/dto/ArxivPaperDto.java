@@ -24,14 +24,13 @@ public class ArxivPaperDto {
     private List<String> authors;
     private String idUrl;
     private String pdfUrl;
-    private String storageUrl;
 
     // 날짜만 담는 필드
     private LocalDate publishedDate;
     private LocalDate updatedDate;
 
     public ArxivPaperDto(String arxivId, String title, String summary, String published, String updated,
-                         List<String> authors, String idUrl, String pdfUrl, String storageUrl) {
+                         List<String> authors, String idUrl, String pdfUrl) {
         this.arxivId = arxivId;
         this.title = title;
         this.summary = summary;
@@ -40,7 +39,6 @@ public class ArxivPaperDto {
         this.authors = authors;
         this.idUrl = idUrl;
         this.pdfUrl = pdfUrl;
-        this.storageUrl = storageUrl;
 
         // 생성자에서 날짜 변환
         this.publishedDate = OffsetDateTime.parse(published).toLocalDate();

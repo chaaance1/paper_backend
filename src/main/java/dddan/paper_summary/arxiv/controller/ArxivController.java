@@ -2,7 +2,6 @@ package dddan.paper_summary.arxiv.controller;
 
 import dddan.paper_summary.arxiv.dto.ArxivPaperDto;
 import dddan.paper_summary.arxiv.service.ArxivService;
-import dddan.paper_summary.arxiv.service.FlaskFormulaNotifyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +15,6 @@ import java.util.Map;
 public class ArxivController {
 
     private final ArxivService arxivService;
-    private final FlaskFormulaNotifyService flaskFormulaNotifyService;
 
     /**
      * 제목 기반 논문 검색
@@ -57,10 +55,6 @@ public class ArxivController {
 
         try {
             ArxivPaperDto dto = arxivService.uploadPaperFromUrl(url);
-
-            if (dto.getStorageUrl() != null && !dto.getStorageUrl().isBlank()) {
-                flaskFormulaNotifyService.sendToFlask(dto.getStorageUrl()); // 수식 파싱 API 호출
-            }
 
             return ResponseEntity.ok(dto);
         } catch (IllegalArgumentException e) {

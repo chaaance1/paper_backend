@@ -7,44 +7,6 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
-  datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-
-    hikari:
-      max-lifetime: 600000    # 10분 (단위: 밀리초)
-      idle-timeout: 300000    # 5분
-      validation-timeout: 5000
-      minimum-idle: 5         # 최소 커넥션 수
-      maximum-pool-size: 20   # 최대 커넥션 수
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
 flask:
   url: https://easily-central-gar.ngrok-free.app/api/parse-formulas
-  base-url: ${FLASK_BASE_URL:http://127.0.0.1:5001}  # Flask 서버 주소
-
-upload:
-  formula-dir: C:/ICT_project/formula_uploads/
-
-ncp:
-  s3:
-    access-key: ${NCP_API_ACCESS_KEY}
-    secret-key: ${NCP_API_SECRET_KEY}
-    endpoint: https://kr.object.ncloudstorage.com
-    region: kr-standard
-    bucket: ${NCP_BUCKET}
-
-ai:
-  summary:
-    api-url: https://paper-analyzer-service-984994768864.asia-northeast3.run.app/summarize-section
-
-
+  base-url: ${FLASK_BASE_URL:http://127.0.0.1:5001}
