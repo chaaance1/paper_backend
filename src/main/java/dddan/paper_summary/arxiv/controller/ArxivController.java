@@ -41,8 +41,8 @@ public class ArxivController {
     }
 
     /**
-     * 통합 API: 논문 URL → 메타데이터 조회 → PDF 다운로드 → 클라우드 업로드 → storageUrl 포함 응답
-     */
+//     * 통합 API: 논문 URL → 메타데이터 조회 → PDF 다운로드
+//     */
     @PostMapping("/upload")
     public ResponseEntity<?> upload(@RequestBody Map<String, String> request) {
         String url = request.get("url");
