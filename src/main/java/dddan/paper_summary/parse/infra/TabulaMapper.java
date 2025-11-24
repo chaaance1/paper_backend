@@ -1,4 +1,4 @@
-package dddan.paper_summary.parse.infra.pdfbox;
+package dddan.paper_summary.parse.infra;
 
 import technology.tabula.Table;
 

@@ -1,9 +1,11 @@
-package dddan.paper_summary.parse.infra.pdfbox;
+package dddan.paper_summary.parse.infra;
 
 import dddan.paper_summary.parse.domain.TableExtractor;
 import dddan.paper_summary.parse.domain.error.DomainException;
 import dddan.paper_summary.parse.domain.model.PaperRef;
 import dddan.paper_summary.parse.domain.model.TableAsset;
+import dddan.paper_summary.parse.domain.model.TableRegion;
+
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.springframework.stereotype.Component;
@@ -17,6 +19,10 @@ import technology.tabula.PageIterator;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,8 +41,13 @@ public class PdfboxTableExtractor implements TableExtractor {
             SpreadsheetExtractionAlgorithm sea = new SpreadsheetExtractionAlgorithm();
             BasicExtractionAlgorithm bea = new BasicExtractionAlgorithm();
 
+            // PDF당 한 번만 생성
+            Path baseDir = Paths.get("tmp", "tables", String.valueOf(ref.getPaperId()));
+            Files.createDirectories(baseDir);
+
             int pageIdx = 1;
-            //Iterable<Page> 이므로 향상 for문 사용
+            int tableIdx = 1;
+
             PageIterator it = oe.extract();
             while (it.hasNext()) {
                 Page page = it.next();
@@ -48,17 +59,38 @@ public class PdfboxTableExtractor implements TableExtractor {
 
                 for (Table t : tables) {
                     String csv = TabulaMapper.toCSV(t);
-                    results.add(TableAsset.builder()
-                            .pageNumber(pageIdx)
-                            .csv(csv)
-                            .build());
+
+                    String fileName = "p" + pageIdx + "_t" + (tableIdx++) + ".csv";
+                    Path filePath = baseDir.resolve(fileName);
+
+                    Files.writeString(filePath, csv, StandardCharsets.UTF_8);
+
+                    // Tabula Table은 Rectangle 상속 → getX/getY/getWidth/getHeight 사용
+                    TableRegion region = new TableRegion(
+                            (float) t.getX(),
+                            (float) t.getY(),
+                            (float) t.getWidth(),
+                            (float) t.getHeight()
+                    );
+
+                    results.add(
+                            TableAsset.builder()
+                                    .paperId(ref.getPaperId())
+                                    .pageNumber(pageIdx)
+                                    .sectionOrder(0)              // 섹션 매핑 나중에
+                                    .tablePath(filePath.toString())
+                                    .region(region)               // 좌표 세팅
+                                    .build()
+                    );
                 }
                 pageIdx++;
             }
             return results;
 
         } catch (IOException e) {
-            throw new DomainException("PDF_TABLE_READ_FAILED: " + e.getMessage(), e);
+            throw new DomainException(
+                    "PDF_TABLE_READ_FAILED for paperId=" + ref.getPaperId() + ": " + e.getMessage(), e
+            );
         }
     }
 }

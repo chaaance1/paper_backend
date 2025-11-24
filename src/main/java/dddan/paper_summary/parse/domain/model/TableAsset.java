@@ -1,19 +1,13 @@
 package dddan.paper_summary.parse.domain.model;
 
 import lombok.*;
-
-@Data
+@Getter
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
 public class TableAsset {
-    private int pageNumber;
-    private String csv;
 
-    public static TableAsset of(int pageNumber, String csv) {
-        return TableAsset.builder()
-                .pageNumber(pageNumber)
-                .csv(csv)
-                .build();
-    }
+    private final Long paperId;
+    private int pageNumber;
+    private final int sectionOrder;
+    private final String tablePath;
+    private TableRegion region;  // 표가 있는 좌표 영역
 }
