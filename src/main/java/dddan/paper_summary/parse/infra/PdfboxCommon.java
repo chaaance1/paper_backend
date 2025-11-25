@@ -1,4 +1,4 @@
-package dddan.paper_summary.parse.infra.pdfbox;
+package dddan.paper_summary.parse.infra;
 
 import dddan.paper_summary.parse.domain.error.DomainException;
 import dddan.paper_summary.parse.domain.model.PaperRef;

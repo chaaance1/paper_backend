@@ -9,25 +9,40 @@ import java.util.*;
 
 public class ColumnAwareTextStripper extends PDFTextStripper {
 
+    // "한 줄"을 표현하는 정보
     private static class LineInfo {
-        final float midX;
-        final String text;
+        final float y;              // 줄의 세로 위치(위치 기준)
+        float midX;                 // 줄의 가로 중심 (컬럼 판별용)
+        final StringBuilder text;   // 이 줄의 전체 텍스트
+        int chunks;                 // 이 줄에 합쳐진 조각 개수
 
-        LineInfo(float midX, String text) {
+        LineInfo(float y, float midX, String firstText) {
+            this.y = y;
             this.midX = midX;
-            this.text = text;
+            this.text = new StringBuilder(firstText);
+            this.chunks = 1;
+        }
+
+        void append(float midX, String more) {
+            // 앞에 내용이 있고, 공백 없이 붙을 것 같으면 공백 하나 넣어주기
+            if (text.length() > 0
+                    && !Character.isWhitespace(text.charAt(text.length() - 1))
+                    && !more.isEmpty()
+                    && !Character.isWhitespace(more.charAt(0))) {
+                text.append(' ');
+            }
+            text.append(more);
+
+            // midX는 평균값으로 업데이트
+            this.midX = (this.midX * chunks + midX) / (chunks + 1);
+            this.chunks++;
         }
     }
 
-    // 페이지별 표 영역 정보
-    private final Map<Integer, List<TableRect>> tableRegionsByPage;
-
     private final List<LineInfo> currentPageLines = new ArrayList<>();
 
-    public ColumnAwareTextStripper(Map<Integer, List<TableRect>> tableRegionsByPage) throws IOException {
-        // null 방어
-        this.tableRegionsByPage = (tableRegionsByPage != null) ? tableRegionsByPage : Collections.emptyMap();
-        // 좌표 기준 정렬을 켜줘야 X기반 판별이 잘 됨
+    public ColumnAwareTextStripper() throws IOException {
+        // X/Y 좌표 기준으로 정렬해서 넘겨달라고 설정
         setSortByPosition(true);
     }
 
@@ -37,53 +52,41 @@ public class ColumnAwareTextStripper extends PDFTextStripper {
         currentPageLines.clear();
     }
 
-    // 현재 페이지에서 사용될 표 영역만 가져오기
-    private List<TableRect> getCurrentPageTables() {
-        int pageNo = getCurrentPageNo(); // PDFTextStripper가 관리하는 페이지 번호 (1-based)
-        List<TableRect> list = tableRegionsByPage.get(pageNo);
-        return (list != null) ? list : Collections.emptyList();
-    }
-
-    // 이 TextPosition이 어떤 표 영역 안에 들어가는지 체크
-    private boolean isInsideAnyTable(TextPosition pos) {
-        float px = pos.getXDirAdj();
-        float py = pos.getYDirAdj();
-
-        for (TableRect r : getCurrentPageTables()) {
-            if (px >= r.getX() && px <= r.getX() + r.getWidth()
-                    && py >= r.getY() && py <= r.getY() + r.getHeight()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     protected void writeString(String text, List<TextPosition> textPositions) throws IOException {
-        // 1) 이 줄이 표 영역 안에 있는지 먼저 검사
-        for (TextPosition pos : textPositions) {
-            if (isInsideAnyTable(pos)) {
-                // 표 안 텍스트 → 텍스트 추출에서 완전히 스킵
-                return;
-            }
-        }
-
-        // 2) 기존 컬럼 감지용 로직 그대로
         String trimmed = text.trim();
         if (trimmed.isEmpty()) {
-            // 빈 줄은 X=0으로 저장해두고 나중에 그대로 흘려보낼 수 있음
-            currentPageLines.add(new LineInfo(0f, text));
+            // 완전 공백 조각은 버려도 됨 (줄 간 공백은 y 값으로 구분됨)
             return;
         }
 
         float sumX = 0f;
+        float sumY = 0f;
         int count = 0;
         for (TextPosition pos : textPositions) {
             sumX += pos.getXDirAdj();
+            sumY += pos.getYDirAdj();
             count++;
         }
-        float midX = (count == 0) ? 0f : sumX / count;
-        currentPageLines.add(new LineInfo(midX, text));
+
+        float midX = (count == 0 ? 0f : sumX / count);
+        float midY = (count == 0 ? 0f : sumY / count);
+
+        // 🔹 Y 좌표가 비슷한 애들끼리 같은 "줄"로 합치기
+        final float lineMergeTolerance = 2.0f; // 같은 줄로 볼 Y 오차 범위
+        LineInfo target = null;
+        for (LineInfo li : currentPageLines) {
+            if (Math.abs(li.y - midY) <= lineMergeTolerance) {
+                target = li;
+                break;
+            }
+        }
+
+        if (target == null) {
+            currentPageLines.add(new LineInfo(midY, midX, text));
+        } else {
+            target.append(midX, text);
+        }
     }
 
     @Override
@@ -93,10 +96,14 @@ public class ColumnAwareTextStripper extends PDFTextStripper {
             return;
         }
 
-        // midX 값들만 추출 (빈 줄 제외)
+        // 🔹 위에서 아래로 정렬 (줄 순서)
+        currentPageLines.sort(Comparator.comparing(li -> li.y));
+
+        // midX 값들만 추출 (컬럼 판단용)
         List<Float> xs = new ArrayList<>();
         for (LineInfo li : currentPageLines) {
-            if (li.text.trim().isEmpty()) continue;
+            String trimmed = li.text.toString().trim();
+            if (trimmed.isEmpty()) continue;
             xs.add(li.midX);
         }
 
@@ -135,41 +142,45 @@ public class ColumnAwareTextStripper extends PDFTextStripper {
 
     private void flushOneColumn() throws IOException {
         for (LineInfo li : currentPageLines) {
-            super.writeString(li.text);
+            String line = li.text.toString().trim();
+            if (line.isEmpty()) continue;
+
+            super.writeString(line);
             super.writeLineSeparator();
         }
     }
 
     private void flushTwoColumns(float threshold) throws IOException {
-        StringBuilder left = new StringBuilder();
-        StringBuilder right = new StringBuilder();
-
-        boolean firstLeft = true;
-        boolean firstRight = true;
+        List<LineInfo> left = new ArrayList<>();
+        List<LineInfo> right = new ArrayList<>();
 
         for (LineInfo li : currentPageLines) {
-            String trimmed = li.text.trim();
-            if (trimmed.isEmpty()) {
-                continue;
-            }
+            String line = li.text.toString().trim();
+            if (line.isEmpty()) continue;
 
             if (li.midX < threshold) {
-                if (!firstLeft) left.append(getLineSeparator());
-                left.append(li.text);
-                firstLeft = false;
+                left.add(li);
             } else {
-                if (!firstRight) right.append(getLineSeparator());
-                right.append(li.text);
-                firstRight = false;
+                right.add(li);
             }
         }
 
-        if (!left.isEmpty()) {
-            super.writeString(left.toString());
+        // 이미 y 기준으로 정렬돼 있음 (start에서 sort 했으니까)
+
+        // 왼쪽 컬럼 먼저 다 출력
+        for (LineInfo li : left) {
+            super.writeString(li.text.toString().trim());
             super.writeLineSeparator();
         }
-        if (!right.isEmpty()) {
-            super.writeString(right.toString());
+
+        // 컬럼 사이에 빈 줄 하나 정도 넣고 싶으면:
+        if (!left.isEmpty() && !right.isEmpty()) {
+            super.writeLineSeparator();
+        }
+
+        // 오른쪽 컬럼 출력
+        for (LineInfo li : right) {
+            super.writeString(li.text.toString().trim());
             super.writeLineSeparator();
         }
     }
