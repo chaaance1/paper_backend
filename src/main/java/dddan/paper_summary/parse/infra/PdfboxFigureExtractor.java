@@ -1,4 +1,4 @@
-package dddan.paper_summary.parse.infra.pdfbox;
+package dddan.paper_summary.parse.infra;
 
 import dddan.paper_summary.parse.domain.FigureExtractor;
 import dddan.paper_summary.parse.domain.error.DomainException;
@@ -37,12 +37,12 @@ public class PdfboxFigureExtractor implements FigureExtractor {
                 // 페이지 렌더 (200DPI 정도면 확인용으로 충분)
                 BufferedImage img = renderer.renderImageWithDPI(page, 200);
 
-                // 파일명: paperId_page.png
+                // 파일명: paperId_page.jpg
                 String base = (ref.getPaperId() != null ? String.valueOf(ref.getPaperId()) : "paper");
-                File out = new File(outDir, base + "_page_" + (page + 1) + ".png");
-                ImageIO.write(img, "png", out);
+                File out = new File(outDir, base + "_page_" + (page + 1) + ".jpg");
+                ImageIO.write(img, "jpg", out);
 
-                // ⚠️ FigureAsset의 필드명이 imagePath가 아니라 path라면 .imagePath(...)를 .path(...)로 바꿔주세요.
+
                 results.add(FigureAsset.builder()
                         .imagePath(out.getAbsolutePath())
                         .build());
