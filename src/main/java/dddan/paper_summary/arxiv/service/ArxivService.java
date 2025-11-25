@@ -143,18 +143,22 @@ public class ArxivService {
             Path localPath = Path.of(savedPath);
 
 
-            // 5. ★ Spring 내부 파싱 실행
-            parseService.parse(
-                    PaperRef.builder()
-                            .paperId(null)                 // Long 타입 그대로
-                            .filename(localPath.toString())                    // S3 공개/프리사인드 URL 또는 로컬 경로
-                            .inputStreamSupplier(() -> openStream(localPath.toString()))
-                            .build()
-            );
+            // 파일 이름만 추출 (예: 2201.00276.pdf)
+            String filename = localPath.getFileName().toString();
+
+            // 2. PaperRef 만들어서 파싱 서비스 호출
+            PaperRef ref = PaperRef.builder()
+                    .paperId(null)                        // 나중에 Paper 엔티티 생기면 그 ID 넣으면 됨
+                    .filename(filename)                   // 원래 파일 이름
+                    .localPath(localPath.toString())      // 로컬 전체 경로
+                    .inputStreamSupplier(() -> openStream(localPath.toString()))
+                    .build();
+
+            parseService.parse(ref);
 
         } catch (IOException e) {
             log.error("[UPLOAD ERROR] {}", dto.getPdfUrl(), e);
-            throw new RuntimeException("PDF 처리 중 오류 발생");
+            throw new RuntimeException("PDF 처리 중 오류 발생", e);
         }
 
         return dto;
@@ -195,11 +199,16 @@ public class ArxivService {
         return "";
     }
     // ArxivService.java 하단에 헬퍼 추가
-    private InputStream openStream(String pathOrUrl) throws IOException {
-        if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
-            return new URL(pathOrUrl).openStream();          // 공개/프리사인드 URL
+    private InputStream openStream(String pathOrUrl) {
+        try {
+            if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
+                return new URL(pathOrUrl).openStream();
+            }
+            return Files.newInputStream(Path.of(pathOrUrl));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
-        return Files.newInputStream(Path.of(pathOrUrl));     // 로컬 경로일 때
     }
+
 }
 
