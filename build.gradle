@@ -63,6 +63,11 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Storage
+    implementation platform("com.google.cloud:libraries-bom:26.71.0")
+    implementation "com.google.cloud:google-cloud-storage"
+
 }
 
 tasks.named('test') {

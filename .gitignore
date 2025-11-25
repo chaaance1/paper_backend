@@ -38,3 +38,7 @@ out/
 
 ### env ###
 src/main/resources/properties/env.properties
+
+### GCP service account keys ###
+/secrets/
+/secrets/*.json

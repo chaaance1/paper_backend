@@ -10,3 +10,7 @@ spring:
 flask:
   url: https://easily-central-gar.ngrok-free.app/api/parse-formulas
   base-url: ${FLASK_BASE_URL:http://127.0.0.1:5001}
+
+paperbite:
+  gcs:
+    bucket-name: paperbite
