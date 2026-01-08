@@ -20,7 +20,7 @@ public final class SectionSplitter {
      */
 
     private static final Pattern TOP_LEVEL_HEADER_PATTERN =
-            Pattern.compile("^\\s*(\\d+)(?:\\.)?\\s+(.+?)\\s*$");
+            Pattern.compile("^\\s*(\\d+)?:\\.?\\s+(.+?)\\s*$");
 
     /**
      *  목차 점선 리더 + 페이지 번호 라인 제거
@@ -97,17 +97,6 @@ public final class SectionSplitter {
                 headerNo = Integer.parseInt(m.group(1));
                 headerTitle = m.group(2);
 
-                // 1) 목차 블록 스킵 중이면: 헤더를 만날 때까지 버리다가,
-                //    "유효한 헤더"일 때만 목차 종료
-                if (skippingTocBlock) {
-                    // 유효 헤더 판단은 아래 규칙 통과해야 함
-                }
-
-                // 2) Abstract 스킵 중이면: 유효 헤더 만나기 전까지 버림
-                if (skippingAbstractBlock) {
-                    // 유효 헤더 판단은 아래 규칙 통과해야 함
-                }
-
                 // 핵심 규칙:
                 // - 첫 섹션은 보통 1부터 시작(최소 1 허용)
                 // - 섹션 번호는 단조 증가(이전보다 커야 함)
@@ -155,7 +144,7 @@ public final class SectionSplitter {
             if (currentTitle == null) continue;
 
             // 본문 누적
-            if (currentContent.length() > 0) currentContent.append("\n");
+            if (!currentContent.isEmpty()) currentContent.append("\n");
             currentContent.append(line);
         }
 

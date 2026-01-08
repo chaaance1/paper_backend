@@ -7,6 +7,15 @@ import org.apache.pdfbox.text.TextPosition;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * ColumnAwareTextStripper
+ * PDFBox 기본 TextStripper는 2단(두 컬럼) 논문에서 왼쪽/오른쪽 컬럼을 섞어서 읽는 문제가 있음.
+ * 이 클래스는:
+ * 1) 텍스트 조각들을 y좌표 기준으로 "줄" 단위로 묶고
+ * 2) 각 줄의 x좌표 분포를 분석해 1단 / 2단을 판단한 뒤
+ * 3) 2단이면 왼쪽 컬럼 → 오른쪽 컬럼 순서로 재정렬하여 출력함
+ */
+
 public class ColumnAwareTextStripper extends PDFTextStripper {
 
     // "한 줄"을 표현하는 정보
