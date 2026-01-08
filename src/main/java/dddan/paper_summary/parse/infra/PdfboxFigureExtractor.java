@@ -16,8 +16,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * PDFBox를 이용해 PDF 논문의 각 페이지를 이미지로 렌더링하여
+ * FigureAsset 목록으로 추출하는 구현체
+ */
+
 @Component
 public class PdfboxFigureExtractor implements FigureExtractor {
+
+    /**
+     * PDF 파일을 페이지 단위로 이미지(JPG)로 변환하여 FigureAsset 리스트로 반환
+     *
+     * @param ref PDF 위치 및 paperId 정보를 담은 참조 객체
+     * @return 페이지별 이미지 정보를 담은 FigureAsset 리스트
+     * @throws DomainException PDF가 없거나 이미지 추출 중 오류가 발생한 경우
+     */
 
     @Override
     public List<FigureAsset> extract(PaperRef ref) throws DomainException {

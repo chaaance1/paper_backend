@@ -26,9 +26,22 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * PdfBox + Tabula 기반 PDF 표(Table) 추출 구현체
+ * - PDF 파일에서 표를 탐지
+ * - 각 표를 CSV 파일로 저장
+ * - 표의 위치 정보(좌표)를 포함한 TableAsset 생성
+ */
 @Component
 public class PdfboxTableExtractor implements TableExtractor {
 
+    /**
+     * PDF에서 표를 추출하여 TableAsset 목록으로 반환
+     *
+     * @param ref 논문 참조 정보 (paperId, 로컬 PDF 경로 포함)
+     * @return 추출된 표 메타데이터 목록
+     * @throws DomainException PDF 처리 중 오류 발생 시
+     */
     @Override
     @SuppressWarnings("DuplicatedCode")
     public List<TableAsset> extract(PaperRef ref) throws DomainException {
@@ -77,7 +90,7 @@ public class PdfboxTableExtractor implements TableExtractor {
                             TableAsset.builder()
                                     .paperId(ref.getPaperId())
                                     .pageNumber(pageIdx)
-                                    .sectionOrder(0)              // 섹션 매핑 나중에
+                                    .sectionOrder(0)              // 섹션 매핑 추후 처리
                                     .tablePath(filePath.toString())
                                     .region(region)               // 좌표 세팅
                                     .build()
