@@ -34,7 +34,7 @@ public class ColumnAwareTextStripper extends PDFTextStripper {
 
         void append(float midX, String more) {
             // 앞에 내용이 있고, 공백 없이 붙을 것 같으면 공백 하나 넣어주기
-            if (text.length() > 0
+            if (!text.isEmpty()
                     && !Character.isWhitespace(text.charAt(text.length() - 1))
                     && !more.isEmpty()
                     && !Character.isWhitespace(more.charAt(0))) {
