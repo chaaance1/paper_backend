@@ -63,7 +63,7 @@ public class ParseResult {
         if (textAsset != null) {
             textDto = TextResultDto.builder()
                     .fullText(textAsset.getFullText())
-                    .pageCount(0)
+                    .pageCount(textAsset.getPageCount())
                     .build();
         }
 
@@ -86,7 +86,7 @@ public class ParseResult {
                     return TableResultDto.builder()
                             .index(i)
                             .sectionOrder(ta.getSectionOrder()) // sectionOrder 있으면 반영
-                            .tablePath("")                       // 필요 시 수정
+                            .tablePath(ta.getTablePath() != null ? ta.getTablePath() : "")
                             .build();
                 })
                 .toList()
@@ -99,7 +99,7 @@ public class ParseResult {
                     FigureAsset fa = figureAssets.get(i);
                     return FigureResultDto.builder()
                             .index(i)
-                            .sectionOrder(fa.getSectionOrder()) // sectionOrder 있으면 반영
+                            .sectionOrder(fa.getSectionOrder()) // sectionOrder 반영
                             .imagePath(fa.getImagePath())
                             .build();
                 })

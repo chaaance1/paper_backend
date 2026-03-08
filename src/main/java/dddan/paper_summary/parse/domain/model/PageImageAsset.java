@@ -16,5 +16,5 @@ import lombok.Getter;
 public class PageImageAsset {
     private final Long paperId;
     private final int pageNumber;      // 1-based
-    private final String localPath;    // or storageUrl
+    private String imagePath;// or storageUrl
 }

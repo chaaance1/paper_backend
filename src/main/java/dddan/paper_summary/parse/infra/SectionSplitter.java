@@ -19,8 +19,11 @@ public final class SectionSplitter {
      * 추후 파싱 정확도 개선 단계에서 확장 가능하도록 설계되어 있다.
      */
 
+
     private static final Pattern TOP_LEVEL_HEADER_PATTERN =
-            Pattern.compile("^\\s*(\\d+)?:\\.?\\s+(.+?)\\s*$");
+            Pattern.compile("^\\s*(\\d+)\\s*(?:[\\.:\\)]\\s*)?\\s+(.+?)\\s*$");
+
+
 
     /**
      *  목차 점선 리더 + 페이지 번호 라인 제거
@@ -95,8 +98,17 @@ public final class SectionSplitter {
 
             if (m.matches()) {
                 headerNo = Integer.parseInt(m.group(1));
-                headerTitle = m.group(2);
+                headerTitle = m.group(2).trim();
 
+                // (1) 제목이 너무 길면(본문일 가능성) 제외
+                if (headerTitle.length() > 80) {
+                    continue;
+                }
+
+                // (2) 제목에 쉼표가 과도하거나 문장형이면 제외(원하면 더 세게)
+                if (headerTitle.contains(",") && headerTitle.length() > 30) {
+                    continue;
+                }
                 // 핵심 규칙:
                 // - 첫 섹션은 보통 1부터 시작(최소 1 허용)
                 // - 섹션 번호는 단조 증가(이전보다 커야 함)
@@ -104,9 +116,7 @@ public final class SectionSplitter {
                 if (lastAcceptedSectionNo == null) {
                     isValidTopHeader = (headerNo == 1);   // 첫 헤더는 1만 허용(필요하면 1~2 허용으로 완화 가능)
                 } else {
-                    isValidTopHeader = (headerNo == lastAcceptedSectionNo + 1);
-                    // 논문에 섹션 번호가 건너뛰는 경우(1,2,4)도 허용하려면:
-                    // isValidTopHeader = (headerNo > lastAcceptedSectionNo);
+                    isValidTopHeader = (headerNo > lastAcceptedSectionNo);
                 }
             }
 

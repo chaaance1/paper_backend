@@ -1,6 +1,8 @@
 package dddan.paper_summary.parse.domain.model;
 
 import lombok.*;
+import java.util.List;
+
 
 /**
  * 논문 PDF에서 추출된 "전체 텍스트(Full Text)"를 표현하는 도메인 모델
@@ -16,4 +18,7 @@ public class TextAsset {
 
     private Long paperId;                 // 어떤 논문인지
     private String fullText;              // PDF 전체 텍스트
+
+    private List<String> pageTexts; // index+1 == pageNumber
+    private int pageCount;
 }

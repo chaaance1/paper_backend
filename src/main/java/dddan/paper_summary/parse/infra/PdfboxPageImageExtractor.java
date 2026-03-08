@@ -70,7 +70,7 @@ public class PdfboxPageImageExtractor implements PageImageExtractor {
                         PageImageAsset.builder()
                                 .paperId(ref.getPaperId())
                                 .pageNumber(pageNumber)
-                                .localPath(outPath.toString())
+                                .imagePath(outPath.toString())
                                 .build()
                 );
             }
